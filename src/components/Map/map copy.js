@@ -17,9 +17,9 @@ function Mapbox() {
   const [lat, setLat] = useState(42.35);
   const [zoom, setZoom] = useState(9);
 
-  const [directions, setDirections] = useState(null);
-
-  const el = document.createElement("div");
+  const [start, setStart] = useState(null);
+  const [end, setEnd] = useState(null);
+  const [waypoints, setWaypoints] = useState(null);
 
   useEffect(() => {
     if (map.current) return; // initialize map only once
@@ -40,7 +40,7 @@ function Mapbox() {
     });
   });
 
-  useEffect(async () => {
+  useEffect(() => {
     if (!map.current) return; // wait for map to initialize
 
     const MapBoxdirections = new MapboxDirections({
@@ -61,21 +61,63 @@ function Mapbox() {
         } else if (Object.keys(MapBoxdirections.getOrigin()).length !== 0 && Object.keys(MapBoxdirections.getDestination()).length === 0) {
           MapBoxdirections.setDestination([event.lngLat.lng, event.lngLat.lat]);
         } else if (Object.keys(MapBoxdirections.getOrigin()).length !== 0 && Object.keys(MapBoxdirections.getDestination()).length !== 0) {
-          MapBoxdirections.addWaypoint(1, [event.lngLat.lng, event.lngLat.lat]);
+          if (MapBoxdirections.getWaypoints().length < 23) {
+            console.log(MapBoxdirections.getWaypoints());
+            MapBoxdirections.addWaypoint(MapBoxdirections.getWaypoints().length, [event.lngLat.lng, event.lngLat.lat]);
+          } else return;
         }
-        console.log(event);
-        console.log(MapBoxdirections);
+        console.log("Event:", event);
+        console.log("MapBoxdirections:", MapBoxdirections);
+        const setData = async () => {
+          if (Object.keys(MapBoxdirections.getOrigin()).length !== 0) {
+            await setStart(MapBoxdirections.getOrigin().geometry.coordinates);
+          }
+          if (Object.keys(MapBoxdirections.getDestination()).length !== 0) {
+            await setEnd(MapBoxdirections.getDestination().geometry.coordinates);
+          }
+          if (MapBoxdirections.getWaypoints().length > 0) {
+            console.log("XXXXX", MapBoxdirections.getWaypoints());
+            await setWaypoints(MapBoxdirections.getWaypoints());
+          }
+        };
+        setData();
       });
     });
   }, []);
 
+  useEffect(() => {
+    console.log("Start:", start);
+    console.log("Waypoints:", waypoints);
+    console.log("End:", end);
+  }, [start, waypoints, end]);
+
   return (
     <div>
-      <div ref={mapContainer} className="map-container">
-        {/* <div className="sidebar">
-          Longitude: {lng} | Latitude: {lat} | Zoom: {zoom}
-        </div> */}
-      </div>
+      <div ref={mapContainer} className="map-container"></div>
+      <h6>Start: </h6>
+      {start && (
+        <p>
+          {start[0]},{start[1]}
+        </p>
+      )}
+
+      <hr />
+      {waypoints && <h6>Waypoints:</h6>}
+      {waypoints &&
+        waypoints.map((element, index) => {
+          return (
+            <p>
+              {index + 1}:{element.geometry.coordinates[0]},{element.geometry.coordinates[1]}
+            </p>
+          );
+        })}
+      <hr />
+      <h6>End: </h6>
+      {end && (
+        <p>
+          {end[0]},{end[1]}
+        </p>
+      )}
     </div>
   );
 }
